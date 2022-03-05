@@ -1,7 +1,147 @@
-MAIN_CONTROL_PANEL_HEIGHT = '350px'
+MAIN_CONTROL_PANEL_HEIGHT = '330px'
+MAIN_CONTROL_PANEL_WIDTH = '1100px'
 
-css = f"""
+LED_CONTROL_PANEL_HEIGHT = '500px'
+LED_CONTROL_PANEL_WIDTH = '1350px'
+
+ACCENT_COLOUR = '#c7eef0'
+
+css_led_control_panel = f"""
 <style>
+    .clear_leds_button{{
+        color : orange;
+    }}
+    
+    .complex_pattern_text{{
+        height : 98%;
+        width : 100%;
+        resize : none;        
+    }}
+    
+    .led_control_panel{{
+        display : flex;
+        flex-flow : row nowrap;
+        height : {LED_CONTROL_PANEL_HEIGHT};
+        width : {LED_CONTROL_PANEL_WIDTH};    
+    }}
+    
+    .control_leds_panel{{
+        display : flex;
+        flex-flow : column nowrap;
+        height : 100%;
+        width : 30%;
+    }}
+    
+    .control_leds_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 80%;
+        width : 100%;
+    }}
+    
+    .clear_leds_button_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : flex-start;
+        height : 20%;
+        width : 100%;    
+    }}
+    
+    .indicate_leds_panel{{
+        display : flex;
+        flex-flow : column nowrap;
+        height : 100%;
+        width : 30%;    
+    }}
+    
+    .indicate_leds_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 80%;
+        width : 100%;    
+    }}
+    
+    .trigger_indicator_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 20%;
+        width : 100%;
+    }}
+    
+    .led_parameters_panel{{
+        display : flex;
+        flex-flow : column nowrap;
+        height : 100%;
+        width : 40%;
+    }}
+    
+    .config_tab{{
+        height : 100%;
+        width : 98%;
+    }}
+    
+    .simple_config_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : flex-start;
+        height : 100%;
+        width : 100%;
+    }}
+    
+    .complex_config_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : flex-start;
+        height : 100%;
+        width : 100%;
+    }}
+    
+    .config_file_upload_box{{
+        height : 15%;
+        width : 100%;
+    }}
+    
+    .config_text_box{{
+        height : 85%;
+        width : 100%;
+    }}
+    
+</style>
+"""
+
+css_main_control_panel = f"""
+<style>
+    .adv_toggle_button{{
+    }}
+    
+    .log{{
+        height : 98%;
+        width : 100%;
+        resize : none;
+    }}
+    
+    .start_button{{
+        color : green;
+    }}
+    
+    .stop_button{{
+        color : red;
+    }}
+
+    .section_heading{{
+        background-color : {ACCENT_COLOUR};
+        #border : solid 2px {ACCENT_COLOUR};
+        margin : 0;
+        border-left : solid 5px black;
+    }}
+
     .label_setting_box{{
         display : grid;
         grid-template-columns : 50% 40%;
@@ -12,28 +152,40 @@ css = f"""
         display : flex;
         flex-flow : row nowrap;
         height : {MAIN_CONTROL_PANEL_HEIGHT};
-        width : 100%;
+        width : {MAIN_CONTROL_PANEL_WIDTH};
     }}
     
     .setup_box{{
         display : flex;
         flex-flow : column nowrap;
         height : 100%;
-        width : 50%;
+        width : 67%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-left : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
     }}
     
     .basic_setup_box{{
         display : flex;
         flex-flow : row nowrap;
-        height : 33%;
+        height : 25%;
         width : 100%;
+    }}
+    
+    .advanced_toggle_button_box{{
+        display : flex;
+        flex-flow : row nowrap;
+        height : 15%;
+        width : 100%;
+        border-bottom : solid 2px {ACCENT_COLOUR};
     }}
     
     .basic_setup_select_device_box{{
         display : flex;
         flex-flow : column nowrap;
         justify-content : flex-start;
-        align-items : center;
+        align-items : flex-start;
         height : 100%;
         width : 100%;
     }}
@@ -42,7 +194,7 @@ css = f"""
         display : flex;
         flex-flow : column nowrap;
         justify-content : flex-start;
-        align-items : center;
+        align-items : flex-start;
         height : 100%;
         width : 100%;
     }}
@@ -50,7 +202,7 @@ css = f"""
     .basic_setup_bitstream_button_box{{
         display : flex;
         flex-flow : row nowrap;
-        justify-content : space-around;
+        justify-content : flex-start;
         align-items : center;
         width : 100%;
     }}
@@ -58,7 +210,7 @@ css = f"""
     .advanced_setup_box{{
         display : flex;
         flex-flow : row nowrap;
-        height : 66%;
+        height : 60%;
         width : 100%;
     }}
     
@@ -68,54 +220,38 @@ css = f"""
         justify-content : flex-start;
         align-items : flex-start;        
         height : 100%;
-        width : 50%;    
+        width : 50%;
     }}
     
     .advanced_setup_files_box{{
         display : flex;
         flex-flow : column nowrap;
         justify-content : flex-start;
-        align-items : center;        
         height : 100%;
         width : 50%;
-    }}
-    
-    .advanced_setup_irr_to_current_box{{
-        display : flex;
-        flex-flow : row nowrap;
-        justify-content : space-around;
-        align-items : center;
-        width : 100%;
-    }}
-
-    .advanced_setup_current_to_irr_box{{
-        display : flex;
-        flex-flow : row nowrap;
-        justify-content : space-around;
-        align-items : center;
-        width : 100%;
     }}
 
     .interact_box{{
         display : flex;
         flex-flow : column nowrap;
         height : 100%;        
-        width : 50%;
+        width : 33%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
     }}
     
-    .interact_irr_trigger_box{{
-        display : flex;
-        flex-flow : row nowrap;
-        justify-content : space-around;
-        align-items : center;
+    .interact_log_box{{
+        height : 60%;
         width : 100%;
     }}
     
     .interact_start_stop_box{{
         display : flex;
-        flex-flow : row nowrap;
-        justify-content : space-around;
+        flex-flow : row wrap;
+        justify-content : center;
         align-items : center;
+        align-content : center;
         width : 100%;
     }}
 
@@ -131,15 +267,15 @@ css = f"""
                                   "70 71 72 73 74 75 76 77 78 79"
                                   "80 81 82 83 84 85 86 87 88 89"
                                   "90 91 92 93 94 95 96 97 98 99"'''};
-        grid-template-rows : repeat(10, 40px);
-        grid-template-columns : repeat(10, 40px);
-        height : 400px;
-        width : 400px;
+        grid-template-rows : repeat(10, 30px);
+        grid-template-columns : repeat(10, 30px);
+        height : 300px;
+        width : 300px;
     }}
     
     .led_indicator{{
-        height : 34px;
-        width : 34px;
+        height : 24px;
+        width : 24px;
         background : #c7eef0;
         border-style: inset;
     }}
@@ -151,3 +287,5 @@ css = f"""
     
 </style>
 """
+
+css = css_main_control_panel + css_led_control_panel
