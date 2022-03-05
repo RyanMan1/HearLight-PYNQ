@@ -1,8 +1,8 @@
 MAIN_CONTROL_PANEL_HEIGHT = '330px'
 MAIN_CONTROL_PANEL_WIDTH = '1100px'
 
-LED_CONTROL_PANEL_HEIGHT = '500px'
-LED_CONTROL_PANEL_WIDTH = '1350px'
+LED_CONTROL_PANEL_HEIGHT = '450px'
+LED_CONTROL_PANEL_WIDTH = '1250px'
 
 ACCENT_COLOUR = '#c7eef0'
 
@@ -10,6 +10,34 @@ css_led_control_panel = f"""
 <style>
     .clear_leds_button{{
         color : orange;
+    }}
+    
+    .trigger_signal_button{{
+        height : 35px;
+        width : 35px;
+        background-color : {ACCENT_COLOUR};
+    }}
+
+    .trigger_signal_button_on{{
+        height : 40px;
+        width : 40px;
+        color : red;
+    }}
+    
+    .peak_irr_select{{
+        width : 100%;
+    }}
+    
+    .pulse_duration_select{{
+        width : 100%;    
+    }}
+    
+    .pulse_frequency_select{{
+        width : 100%;    
+    }}
+    
+    .no_pulses_select{{
+        width : 100%;    
     }}
     
     .complex_pattern_text{{
@@ -29,7 +57,11 @@ css_led_control_panel = f"""
         display : flex;
         flex-flow : column nowrap;
         height : 100%;
-        width : 30%;
+        width : 35%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-left : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
     }}
     
     .control_leds_box{{
@@ -37,16 +69,16 @@ css_led_control_panel = f"""
         flex-flow : column nowrap;
         justify-content : center;
         align-items : center;
-        height : 80%;
+        height : 89%;
         width : 100%;
     }}
     
     .clear_leds_button_box{{
         display : flex;
-        flex-flow : column nowrap;
+        flex-flow : row nowrap;
         justify-content : center;
-        align-items : flex-start;
-        height : 20%;
+        align-items : center;
+        height : 10%;
         width : 100%;    
     }}
     
@@ -54,7 +86,10 @@ css_led_control_panel = f"""
         display : flex;
         flex-flow : column nowrap;
         height : 100%;
-        width : 30%;    
+        width : 35%;  
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
     }}
     
     .indicate_leds_box{{
@@ -62,16 +97,16 @@ css_led_control_panel = f"""
         flex-flow : column nowrap;
         justify-content : center;
         align-items : center;
-        height : 80%;
+        height : 90%;
         width : 100%;    
     }}
     
     .trigger_indicator_box{{
         display : flex;
-        flex-flow : column nowrap;
+        flex-flow : row nowrap;
         justify-content : center;
         align-items : center;
-        height : 20%;
+        height : 10%;
         width : 100%;
     }}
     
@@ -79,7 +114,10 @@ css_led_control_panel = f"""
         display : flex;
         flex-flow : column nowrap;
         height : 100%;
-        width : 40%;
+        width : 30%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
     }}
     
     .config_tab{{
@@ -95,6 +133,12 @@ css_led_control_panel = f"""
         width : 100%;
     }}
     
+    .config_setting_box{{
+        display : grid;
+        grid-template-columns : 55% 35%;
+        width : 100%;    
+    }}
+    
     .complex_config_box{{
         display : flex;
         flex-flow : column nowrap;
@@ -104,8 +148,10 @@ css_led_control_panel = f"""
     }}
     
     .config_file_upload_box{{
+        display : grid;
+        grid-template-columns : 50% 40%;
         height : 15%;
-        width : 100%;
+        width : 100%;        
     }}
     
     .config_text_box{{
@@ -267,15 +313,15 @@ css_main_control_panel = f"""
                                   "70 71 72 73 74 75 76 77 78 79"
                                   "80 81 82 83 84 85 86 87 88 89"
                                   "90 91 92 93 94 95 96 97 98 99"'''};
-        grid-template-rows : repeat(10, 30px);
-        grid-template-columns : repeat(10, 30px);
-        height : 300px;
-        width : 300px;
+        grid-template-rows : repeat(10, 35px);
+        grid-template-columns : repeat(10, 35px);
+        height : 360px;
+        width : 360px;
     }}
     
     .led_indicator{{
-        height : 24px;
-        width : 24px;
+        height : 28px;
+        width : 28px;
         background : #c7eef0;
         border-style: inset;
     }}
