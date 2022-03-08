@@ -319,6 +319,15 @@ css_main_control_panel = f"""
         width : 360px;
     }}
     
+    .led_grid_loading{{
+        display : flex;
+        flex-flow : row nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 360px;
+        width : 360px;
+    }}
+    
     .led_indicator{{
         height : 28px;
         width : 28px;
