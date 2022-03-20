@@ -354,7 +354,7 @@ class LEDControlPanel():
     def __init__(self, control_array):
         # led grid to select LEDs
         # start background task to allow user to work while grid is loading
-        self.select_led_grid_gen_task = asyncio.ensure_future(control_array.select_leds.get_led_grid())
+        #self.select_led_grid_gen_task = asyncio.ensure_future(control_array.select_leds.get_led_grid())
         self.select_led_grid = control_array.select_leds.led_grid
         
         # button to clear selected LEDs
@@ -362,7 +362,7 @@ class LEDControlPanel():
         self.clear_leds_button.add_class('clear_leds_button')
         
         # led grid to indicate actual LEDs
-        self.indicate_led_grid_gen_task = asyncio.ensure_future(control_array.indicate_leds.get_led_grid())
+        #self.indicate_led_grid_gen_task = asyncio.ensure_future(control_array.indicate_leds.get_led_grid())
         self.indicate_led_grid = control_array.indicate_leds.led_grid
 
         # disabled button to indicate trigger signal
@@ -514,10 +514,7 @@ class Regressions():
 
 """
 class HearLight():
-    def __init__(self):
-        
-        [task.cancel for task in asyncio.all_tasks()];
-        
+    def __init__(self):        
         self.select_leds = SelectLEDs(self)
         self.indicate_leds = IndicateLEDs()
         
@@ -528,6 +525,9 @@ class HearLight():
         self.led_control_panel = self.led_control_panel_inst.led_control_panel
         #self.regressions = Regressions(self.main_control_panel.peak_irr_select)
         #self.main_control_panel.peak_irr_select.observe(functools.partial(self.regressions.irradiance_to_current, self.indicate_leds.matrix_output), ['value'])
+        
+        self.array_currents_panel_inst = ArrayCurrentsPanel()
+        #self.array_currents_panel = self.array_currents_panel_inst.array_currents_panel
         
         self.channel_states = np.array([False] * N_CHANNELS, ndmin=2)  # channel off is false
         self.switch_states = np.array([False] * N_SWITCHES, ndmin=2) # switches open is false
