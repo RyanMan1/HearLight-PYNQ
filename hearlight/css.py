@@ -1,8 +1,20 @@
+LOGO_PANEL_HEIGHT = '330px'
+LOGO_PANEL_WIDTH = '100%'
+
 MAIN_CONTROL_PANEL_HEIGHT = '330px'
-MAIN_CONTROL_PANEL_WIDTH = '1100px'
+MAIN_CONTROL_PANEL_WIDTH = '100%'
 
 LED_CONTROL_PANEL_HEIGHT = '450px'
-LED_CONTROL_PANEL_WIDTH = '1250px'
+LED_CONTROL_PANEL_WIDTH = '100%'
+
+REQUIRED_CURRENTS_HEIGHT = '305px'
+REQUIRED_CURRENTS_WIDTH = '600px'
+
+CHANNEL_CURRENTS_HEIGHT = '39px'
+CHANNEL_CURRENTS_WIDTH = '600px'
+
+ACTUAL_IRRADIANCES_HEIGHT = '305px'
+ACTUAL_IRRADIANCES_WIDTH = '600px'
 
 ACCENT_COLOUR = '#c7eef0'
 
@@ -159,6 +171,36 @@ css_led_control_panel = f"""
         width : 100%;
     }}
     
+</style>
+"""
+
+css_logo_panel = f"""
+<style>
+    .logo_panel_css{{
+        height : {LOGO_PANEL_HEIGHT};
+        width : {LOGO_PANEL_WIDTH};
+    }}
+    
+    .logo_image_box_css{{
+        height : 40%;
+        width : 100%;
+        overflow : hidden;
+    }}
+    
+    .logo_image_css{{
+        border : none;
+        overflow : hidden;
+    }}
+    
+    .text_box_css{{
+        height : 60%;
+        width : 100%;
+        background-color : #249abc;
+    }}
+    
+    .text_css{{
+        color : white;
+    }}
 </style>
 """
 
@@ -343,4 +385,30 @@ css_main_control_panel = f"""
 </style>
 """
 
-css = css_main_control_panel + css_led_control_panel
+css_array_currents_panel = f"""
+<style>
+    .required_currents_table{{
+        height : {REQUIRED_CURRENTS_HEIGHT};
+        width : {REQUIRED_CURRENTS_WIDTH};
+        border : solid 1px black;
+        margin : none;
+    }}
+    
+    .channel_currents_table{{
+        height : {CHANNEL_CURRENTS_HEIGHT};
+        width : {CHANNEL_CURRENTS_WIDTH};
+        border : solid 1px black;
+        margin : none;
+    }}
+    
+    .actual_irradiances_table{{
+        height : {ACTUAL_IRRADIANCES_HEIGHT};
+        width : {ACTUAL_IRRADIANCES_WIDTH};
+        border : solid 1px black;
+        margin : none;
+    }}    
+    
+</style>
+"""
+
+css = css_logo_panel + css_main_control_panel + css_led_control_panel + css_array_currents_panel

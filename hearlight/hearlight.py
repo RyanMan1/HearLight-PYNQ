@@ -3,12 +3,42 @@ import numpy as np
 import functools
 import asyncio
 
-from .css import css
-
+from .css import css, REQUIRED_CURRENTS_HEIGHT, REQUIRED_CURRENTS_WIDTH, CHANNEL_CURRENTS_HEIGHT, CHANNEL_CURRENTS_WIDTH, ACTUAL_IRRADIANCES_HEIGHT, ACTUAL_IRRADIANCES_WIDTH
+                
 import copy
 
 N_SWITCHES = 10
 N_CHANNELS = 10
+
+"""Class for logo panel
+
+"""
+class LogoPanel():
+    def __init__(self):
+        self.logo_panel = widgets.VBox()
+        self.logo_panel.add_class('logo_panel_css')
+
+        logo_image_box = widgets.Box()
+        logo_image = widgets.Image(value=open('logo.png', 'rb').read())
+        logo_image.add_class('logo_image_css')
+        logo_image_box.children += (logo_image,)
+        logo_image_box.add_class('logo_image_box_css')
+
+
+        text_box = widgets.VBox()
+        text_box.add_class('text_box_css')
+        text_title = widgets.HTML(value='<br><b>HearLight FPGA Control System</b>')
+        text_title.add_class('text_css')
+        text_version = widgets.HTML(value='<i>version 1.0, March 2022</i>')
+        text_version.add_class('text_css')
+        text_author = widgets.HTML(value='<i>University of Strathclyde</i>')
+        text_author.add_class('text_css')
+        text_box.children += (text_title,
+                              text_version,
+                              text_author,)
+
+        self.logo_panel.children += (logo_image_box,
+                                     text_box,)
 
 """Class for the main control/setup panel.
 
@@ -214,7 +244,14 @@ class SelectLEDs():
         self.leds_clicked = [[False] * N_CHANNELS for _ in range(N_SWITCHES)]
 
         self.led_grid = widgets.Box()
-
+        
+        # display button to load LED grid
+        self.load_grid_button = widgets.Button(description='load grid')
+        self.load_grid_button.on_click(self.load_grid_button_clicked)
+        self.led_grid.add_class('led_grid_loading')
+        self.led_grid.children = [self.load_grid_button]
+        
+    def load_grid_button_clicked(self, load_grid_button):
         # display loading bar widget
         self.loading = widgets.IntProgress(
             value=0,
@@ -227,7 +264,9 @@ class SelectLEDs():
         )
         self.led_grid.add_class('led_grid_loading')
         self.led_grid.children = [self.loading]
-                
+        
+        asyncio.ensure_future(self.get_led_grid())
+        
     async def get_led_grid(self):
         led_grid_temp = widgets.Box()
         led_grid_temp.add_class('led_grid')
@@ -283,6 +322,13 @@ class IndicateLEDs():
 
         self.led_grid = widgets.Box()
 
+        # display button to load LED grid
+        self.load_grid_button = widgets.Button(description='load grid')
+        self.load_grid_button.on_click(self.load_grid_button_clicked)
+        self.led_grid.add_class('led_grid_loading')
+        self.led_grid.children = [self.load_grid_button]
+        
+    def load_grid_button_clicked(self, load_grid_button):
         # display loading bar widget
         self.loading = widgets.IntProgress(
             value=0,
@@ -295,6 +341,8 @@ class IndicateLEDs():
         )
         self.led_grid.add_class('led_grid_loading')
         self.led_grid.children = [self.loading]
+        
+        asyncio.ensure_future(self.get_led_grid())
 
     async def get_led_grid(self):
         led_grid_temp = widgets.Box()
@@ -495,7 +543,43 @@ class LEDControlPanel():
 """
 class ArrayCurrentsPanel():
     def __init__(self):
-        pass
+        # table to display required currents for given irradiance and selection of LEDs
+        self.required_currents_label = widgets.HTML(value='<b>&nbsp;LED currents (mA) required</b>')
+        self.required_currents_label.add_class('section_heading')
+        self.required_currents_table = widgets.HBox()
+        self.required_currents_table.add_class('required_currents_table')
+        self.required_currents_table.children = [widgets.VBox(children=[widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : f'calc({REQUIRED_CURRENTS_HEIGHT}/10)', 'width' : f'calc({REQUIRED_CURRENTS_WIDTH}-2px)/10)', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_SWITCHES)], 
+                                                  layout={'height' : f'calc({REQUIRED_CURRENTS_HEIGHT}-2px)', 'width' : f'calc({REQUIRED_CURRENTS_WIDTH}/10)', 'border' : 'none', 'margin' : 'none'}) for _ in range(N_CHANNELS)]
+        self.required_currents_panel = widgets.VBox(children=[self.required_currents_label, self.required_currents_table])
+
+        # table to display actual channel currents based on required LED currents based on maximum parameters
+        self.channel_currents_label = widgets.HTML(value='<b>&nbsp;Actual channel currents (mA)</b>')
+        self.channel_currents_label.add_class('section_heading')      
+        self.channel_currents_table = widgets.HBox()
+        self.channel_currents_table.add_class('channel_currents_table')
+        self.channel_currents_table.children = [widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : f'calc({CHANNEL_CURRENTS_HEIGHT}-2px)', 'width' : f'calc({CHANNEL_CURRENTS_WIDTH}/10)', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_CHANNELS)]
+        self.channel_currents_panel = widgets.VBox(children=[self.channel_currents_label, self.channel_currents_table])
+        
+        # table to display actual LED irradiances based on actual channel currents and closed switches
+        self.actual_irradiances_label = widgets.HTML(value='<b>&nbsp;Actual LED irradiances (mW/mm^2)</b>')
+        self.actual_irradiances_label.add_class('section_heading')
+        # self.actual_irradiances_table = widgets.HBox(layout={'height' : '402px', 'width' : '702px', 'border' : 'solid 1px black', 'margin' : 'none'})
+        # self.actual_irradiances_table.children = [widgets.VBox(children=[widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : '40px', 'width' : '70px', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_SWITCHES)], 
+        #                                           layout={'height' : '400px', 'width' : '72px', 'border' : 'none', 'margin' : 'none'}) for _ in range(N_CHANNELS)]
+        self.actual_irradiances_table = widgets.HBox()
+        self.actual_irradiances_table.add_class('actual_irradiances_table')
+        self.actual_irradiances_table.children = [widgets.VBox(children=[widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : f'calc({ACTUAL_IRRADIANCES_HEIGHT}/10)', 'width' : f'calc({ACTUAL_IRRADIANCES_WIDTH}-2px)/10)', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_SWITCHES)], 
+                                                  layout={'height' : f'calc({ACTUAL_IRRADIANCES_HEIGHT}-2px)', 'width' : f'calc({ACTUAL_IRRADIANCES_WIDTH}/10)', 'border' : 'none', 'margin' : 'none'}) for _ in range(N_CHANNELS)]
+        self.actual_irradiances_panel = widgets.VBox(children=[self.actual_irradiances_label, self.actual_irradiances_table])
+        
+    def edit_required_currents_value(self, row, col, value):
+        self.required_currents_table.children[col].children[row].children[0].value = str(value)
+        
+    def edit_channal_currents_value(self, row, col, value):
+        self.channel_currents_table.children[col].children[row].children[0].value = str(value)
+        
+    def edit_actual_irradiances_value(self, row, col, value):
+        self.actual_irradiances_table.children[col].children[row].children[0].value = str(value)
         
 """Class to load regressions and compute required currents/actuall irradiances.
 
@@ -514,7 +598,10 @@ class Regressions():
 
 """
 class HearLight():
-    def __init__(self):        
+    def __init__(self):
+        self.logo_panel_inst = LogoPanel()
+        self.logo_panel = self.logo_panel_inst.logo_panel
+        
         self.select_leds = SelectLEDs(self)
         self.indicate_leds = IndicateLEDs()
         
@@ -527,7 +614,9 @@ class HearLight():
         #self.main_control_panel.peak_irr_select.observe(functools.partial(self.regressions.irradiance_to_current, self.indicate_leds.matrix_output), ['value'])
         
         self.array_currents_panel_inst = ArrayCurrentsPanel()
-        #self.array_currents_panel = self.array_currents_panel_inst.array_currents_panel
+        self.required_currents_panel = self.array_currents_panel_inst.required_currents_panel
+        self.channel_currents_panel = self.array_currents_panel_inst.channel_currents_panel
+        self.actual_irradiances_panel = self.array_currents_panel_inst.actual_irradiances_panel        
         
         self.channel_states = np.array([False] * N_CHANNELS, ndmin=2)  # channel off is false
         self.switch_states = np.array([False] * N_SWITCHES, ndmin=2) # switches open is false
