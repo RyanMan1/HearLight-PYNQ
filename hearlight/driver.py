@@ -29,7 +29,12 @@ class ControlLEDs():
 
         self.cs_b.set_direction(lib.GPIO_OUT)
         self.cs_b.write(1)
-
+        
+        # trigger out signal (pin A3)
+        self.trig_out = lib.gpio_open(16)
+        self.trig_out.set_direction(lib.GPIO_OUT)
+        self.trig_out.write(0)
+        
         # RPC handle for switches control through GPIO - initialise to 'high' (switch open)
         self.switches = [lib.gpio_open(3),
                          lib.gpio_open(4),
