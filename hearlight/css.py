@@ -16,6 +16,9 @@ CHANNEL_CURRENTS_WIDTH = '600px'
 ACTUAL_IRRADIANCES_HEIGHT = '305px'
 ACTUAL_IRRADIANCES_WIDTH = '600px'
 
+AUDIO_CONTROL_PANEL_HEIGHT = '600px'
+AUDIO_CONTROL_PANEL_WIDTH = '1000px'
+
 ACCENT_COLOUR = '#c7eef0'
 
 css_led_control_panel = f"""
@@ -411,4 +414,88 @@ css_array_currents_panel = f"""
 </style>
 """
 
-css = css_logo_panel + css_main_control_panel + css_led_control_panel + css_array_currents_panel
+css_audio_control_panel = f"""
+<style>
+    .start_button{{
+        color : green;
+    }}
+    
+    .stop_button{{
+        color : red;
+    }}
+    
+    .audio_control_panel{{
+        display : flex;
+        flex-flow : row nowrap;
+        height : {AUDIO_CONTROL_PANEL_HEIGHT};
+        width : {AUDIO_CONTROL_PANEL_WIDTH};
+    }}
+    
+    .audio_setup_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        height : 100%;
+        width : 40%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-left : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
+    }}
+    
+    .audio_setup_buttons_box{{
+        display : flex;
+        flex-flow : row nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 10%;
+        width : 100%;
+    }}
+    
+    .audio_setup_parameters_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 60%;
+        width : 100%;
+        border-top : solid 2px {ACCENT_COLOUR};
+    }}
+    
+    .audio_plots_settings_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : center;
+        height : 30%;
+        width : 100%;        
+        border-top : solid 2px {ACCENT_COLOUR};
+    }}
+    
+    .audio_setup_info_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        justify-content : center;
+        align-items : space-around;
+        height : 0%;
+        width : 100%;
+    }}
+
+    .audio_plots_box{{
+        display : flex;
+        flex-flow : column nowrap;
+        height : 100%;
+        width : 60%;
+        border-top : solid 2px {ACCENT_COLOUR};
+        border-bottom : solid 2px {ACCENT_COLOUR};
+        border-right : solid 2px {ACCENT_COLOUR};
+    }}
+    
+    .plot_box{{
+        height : 100%;
+        width : 100%;
+    }}
+    
+</style>
+"""
+
+css = css_logo_panel + css_main_control_panel + css_led_control_panel + css_array_currents_panel + css_audio_control_panel

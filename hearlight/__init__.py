@@ -1,2 +1,3 @@
 from .css import css
-from .hearlight import HearLight
+from .dashboard import Dashboard
+from .audio import AudioControlPanel
