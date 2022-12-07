@@ -27,16 +27,16 @@ css_led_control_panel = f"""
         color : orange;
     }}
     
-    .trigger_signal_button{{
+    .trigger_signal_box{{
         height : 35px;
         width : 35px;
         background-color : {ACCENT_COLOUR};
     }}
 
-    .trigger_signal_button_on{{
-        height : 40px;
-        width : 40px;
-        color : red;
+    .trigger_signal_box_on{{
+        height : 35px;
+        width : 35px;
+        background-color : red;
     }}
     
     .peak_irr_select{{

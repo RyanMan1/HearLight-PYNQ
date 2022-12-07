@@ -2,14 +2,22 @@ import ipywidgets as widgets
 import numpy as np
 import functools
 import asyncio
+import traitlets
+from time import sleep
 
 from .audio import AudioControlPanel
 from .css import css, REQUIRED_CURRENTS_HEIGHT, REQUIRED_CURRENTS_WIDTH, CHANNEL_CURRENTS_HEIGHT, CHANNEL_CURRENTS_WIDTH, ACTUAL_IRRADIANCES_HEIGHT, ACTUAL_IRRADIANCES_WIDTH
-                
+
+from pynq import Overlay
+from .driver import ControlLEDs
+
 import copy
 
 N_SWITCHES = 10
 N_CHANNELS = 10
+
+OVERLAYS = {'Base overlay' : 'base.bit',
+            'Ryan overlay 1' : './overlays/test.bit'}
 
 """Class for logo panel
 
@@ -44,45 +52,73 @@ class LogoPanel():
 """Class for the main control/setup panel.
 
 """
-class MainControlPanel():
+class MainControlPanel(traitlets.HasTraits):
+    device_trait = traitlets.Int()
+    shield_trait = traitlets.Int()
+    led_max_current_trait = traitlets.Float()
+    channel_max_current_trait = traitlets.Float()
+    switch_max_current_trait = traitlets.Float()
+    device_max_current_trait = traitlets.Float()
+    dac_ref_trait = traitlets.Float()
+    irr_to_current_trait = traitlets.Dict()
+    current_to_irr_trait = traitlets.Dict()
+    
     def __init__(self):
         # dropdown to select device (probe or test matrix)
-        self.select_device = widgets.Dropdown(options=['Test matrix', 'HearLight device'], layout = {'width' : '100%'})
+        self.select_device = widgets.Dropdown(options=[('HearLight device', 1), ('Test matrix', 2)], layout = {'width' : '100%'})
+        traitlets.link((self.select_device, 'value'), (self, 'device_trait'))
         
         # dropdown to select shield version
-        self.select_shield = widgets.Dropdown(options=['HearLight shield v1'], layout = {'width' : '100%'})
+        self.select_shield = widgets.Dropdown(options=[('HearLight shield v1 w/ext power supply', 1), ('HearLight shield v1', 2)], layout = {'width' : '100%'})
+        traitlets.link((self.select_shield, 'value'), (self, 'shield_trait'))
         
         # toggle button for simple or advanced mode
-        self.adv_toggle_button = widgets.ToggleButton(description='Advanced', value=False, disabled=True)
+        self.adv_toggle_button = widgets.ToggleButton(description='Advanced', value=False, disabled=False)
         self.adv_toggle_button.add_class('adv_toggle_button')
+        def adv_setting_transform(tf):
+            return True if tf == False else False
         
         # dropdown to select overlay to program
-        self.overlay_select = widgets.Dropdown(options=['Base overlay'], layout = {'width' : '100%'})
+        self.ol = None
+        self.overlay_select = widgets.Dropdown(options=OVERLAYS.keys(), layout = {'width' : '100%'})
         
         # button to program bitstream
         self.program_overlay_button = widgets.Button(description='Program FPGA', icon='download')
+        self.program_overlay_button.on_click(self.program_overlay)
         
         # dropdown for maximum LED current
         self.led_max_current_select = widgets.Dropdown(options=[30, 100], value=30, disabled=True, layout = {'width' : '100%'})
+        traitlets.link((self.led_max_current_select, 'value'), (self, 'led_max_current_trait'))
+        traitlets.dlink((self.adv_toggle_button, 'value'), (self.led_max_current_select, 'disabled'), adv_setting_transform)
         
         # entry boxes for maximum channel, switch and device currents 
-        self.channel_max_current_select = widgets.FloatText(value=100, disabled=True, layout = {'width' : '100%'})
+        self.channel_max_current_select = widgets.FloatText(value=300, disabled=True, layout = {'width' : '100%'})
+        traitlets.link((self.channel_max_current_select, 'value'), (self, 'channel_max_current_trait'))
+        traitlets.dlink((self.adv_toggle_button, 'value'), (self.channel_max_current_select, 'disabled'), adv_setting_transform)
         
         self.switch_max_current_select = widgets.FloatText(value=130, disabled=True, layout = {'width' : '100%'})
-        
-        self.device_max_current_select = widgets.FloatText(value=400, disabled=True, layout = {'width' : '100%'})
+        traitlets.link((self.switch_max_current_select, 'value'), (self, 'switch_max_current_trait'))
+        traitlets.dlink((self.adv_toggle_button, 'value'), (self.switch_max_current_select, 'disabled'), adv_setting_transform)
+       
+        self.device_max_current_select = widgets.FloatText(value=2500, disabled=True, layout = {'width' : '100%'})
+        traitlets.link((self.device_max_current_select, 'value'), (self, 'device_max_current_trait'))
+        traitlets.dlink((self.adv_toggle_button, 'value'), (self.device_max_current_select, 'disabled'), adv_setting_transform)
         
         # dropdown for DAC reference current
-        self.dac_ref = widgets.Dropdown(options=[3.125, 6.25, 12.5, 25, 50, 100], value=100, disabled=True, layout = {'width' : '100%'})
-        self.dac_ref.add_class('dac_ref')        
-        self.dac_ref_commands = {'3.125' : 1, '6.25' : 2, '12.5' : 3, '25' : 4, '50' : 5, '100' : 6}
+        self.dac_ref = widgets.Dropdown(options=[3.125, 6.25, 12.5, 25, 50, 100, 200, 300], value=300, disabled=True, layout = {'width' : '100%'})
+        self.dac_ref.add_class('dac_ref')
+        self.dac_ref_commands = {'3.125' : 0, '6.25' : 1, '12.5' : 2, '25.0' : 3, '50.0' : 4, '100.0' : 5, '200.0' : 6, '300.0' : 7}
+        traitlets.link((self.dac_ref, 'value'), (self, 'dac_ref_trait'))
+        traitlets.dlink((self.adv_toggle_button, 'value'), (self.dac_ref, 'disabled'), adv_setting_transform)
         
         # file uploads for irradiance to current regression coefficients
-        self.irr_to_current_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=True)
+        self.irr_to_current_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False)
+        traitlets.link((self.irr_to_current_upload, 'value'), (self, 'irr_to_current_trait'))
         self.irr_to_current_upload_path = widgets.HTML(value='<i style="color:blue;">No file selected!</i>')
         
         # file upload for current to irradiance regression coefficients 
-        self.current_to_irr_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=True)
+        self.current_to_irr_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False)
+        traitlets.link((self.current_to_irr_upload, 'value'), (self, 'current_to_irr_trait'))
         self.current_to_irr_upload_path = widgets.HTML(value='<i style="color:blue;">No file selected!</i>')
         
         # text box for error log
@@ -96,8 +132,15 @@ class MainControlPanel():
         # button to stop program running
         self.stop_button = widgets.Button(description='STOP', icon='stop')
         self.stop_button.add_class('stop_button')
+        self.stop_pressed = False
                 
         self.layout_panel()
+        
+    def program_overlay(self, trait):
+        self.ol = Overlay(OVERLAYS[self.overlay_select.value])
+        
+    def update_log(self, log_text):
+        self.log.value += log_text
         
     def layout_panel(self):
         ### main control panel box
@@ -256,7 +299,7 @@ class SelectLEDs():
             max=100,
             description='Loading:',
             bar_style='info', # 'success', 'info', 'warning', 'danger' or ''
-            style={'bar_color': 'blue'},
+            style={'bar_color': 'maroon'},
             orientation='horizontal'
         )
         self.led_grid.add_class('led_grid_loading')
@@ -292,6 +335,23 @@ class SelectLEDs():
         self.led_grid.add_class('led_grid')                
         self.led_grid.children = led_grid_temp.children
         
+    def clear_button_clicked(self, btn):
+        for row in range(N_SWITCHES):
+            for col in range(N_CHANNELS):
+                self.leds_clicked[row][col] = False
+                self.led_grid.children[row*10+col].children[0].remove_class('led_indicator_clicked')
+                
+        # update switch states and channel states
+        self.control_array.get_switch_states()
+        self.control_array.get_channel_states()
+            
+        # update LED indicator
+        self.control_array.indicate_leds.update_led_indicator(self.control_array.channel_states, self.control_array.switch_states)
+        
+        # update channel currents
+        self.control_array.get_channel_currents([])                
+        
+        
     def led_clicked(self, led_indicator):
         if self.leds_clicked[led_indicator.led_row_idx][led_indicator.led_col_idx] == False:
             led_indicator.add_class('led_indicator_clicked')
@@ -299,17 +359,17 @@ class SelectLEDs():
         else:
             led_indicator.remove_class('led_indicator_clicked')
             self.leds_clicked[led_indicator.led_row_idx][led_indicator.led_col_idx] = False
-            
-        self.control_array.get_channel_currents()
-        self.control_array.get_switch_states()
 
+        # update switch states and channel states
+        self.control_array.get_switch_states()
+        self.control_array.get_channel_states()
+            
         # update LED indicator
         self.control_array.indicate_leds.update_led_indicator(self.control_array.channel_states, self.control_array.switch_states)
         
         # update channel currents
-        # TEMPORARILY UNCOMMENT
-        # self.control_array.regressions.irradiance_to_current(self.control_array.indicate_leds.matrix_output)
-
+        self.control_array.get_channel_currents([])
+        
 """Class for the LEDs indicator.
 
 """
@@ -395,7 +455,9 @@ class IndicateLEDs():
 """Class for the LEDs control panel.
 
 """
-class LEDControlPanel():
+class LEDControlPanel(traitlets.HasTraits):
+    peak_irr_trait = traitlets.Float()
+    
     def __init__(self, control_array):
         # led grid to select LEDs
         # start background task to allow user to work while grid is loading
@@ -405,19 +467,21 @@ class LEDControlPanel():
         # button to clear selected LEDs
         self.clear_leds_button = widgets.Button(description='CLEAR', icon='restart')
         self.clear_leds_button.add_class('clear_leds_button')
+        self.clear_leds_button.on_click(control_array.select_leds.clear_button_clicked)
         
         # led grid to indicate actual LEDs
         #self.indicate_led_grid_gen_task = asyncio.ensure_future(control_array.indicate_leds.get_led_grid())
         self.indicate_led_grid = control_array.indicate_leds.led_grid
 
-        # disabled button to indicate trigger signal
-        self.trigger_signal_button = widgets.Button(disabled=True)
-        self.trigger_signal_button.add_class('trigger_signal_button')
+        # box to indicate trigger signal
+        self.trigger_signal_box = widgets.Box()
+        self.trigger_signal_box.add_class('trigger_signal_box')
         
         # float text for peak irradiance (mW/mm^2)
         self.peak_irr_select = widgets.FloatText(min=0, max=100, value=20)
         self.peak_irr_select.add_class('peak_irr_select')
-        
+        traitlets.link((self.peak_irr_select, 'value'), (self, 'peak_irr_trait'))
+
         # float text for pulse duration (ms)
         self.pulse_duration_select = widgets.FloatText(min=0, value=500)
         self.pulse_duration_select.add_class('pulse_duration_select')
@@ -478,7 +542,7 @@ class LEDControlPanel():
         
         trigger_indicator_box = widgets.Box()
         trigger_indicator_box.add_class('trigger_indicator_box')
-        trigger_indicator_box.children += (widgets.HTML('<b>TRIGGER</b>'), self.trigger_signal_button, )
+        trigger_indicator_box.children += (widgets.HTML('<b>TRIGGER</b>'), self.trigger_signal_box, )
         indicate_leds_panel.children += (trigger_indicator_box, )        
         
         led_parameters_panel = widgets.Box()
@@ -560,9 +624,6 @@ class ArrayCurrentsPanel():
         # table to display actual LED irradiances based on actual channel currents and closed switches
         self.actual_irradiances_label = widgets.HTML(value='<b>&nbsp;Actual LED irradiances (mW/mm^2)</b>')
         self.actual_irradiances_label.add_class('section_heading')
-        # self.actual_irradiances_table = widgets.HBox(layout={'height' : '402px', 'width' : '702px', 'border' : 'solid 1px black', 'margin' : 'none'})
-        # self.actual_irradiances_table.children = [widgets.VBox(children=[widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : '40px', 'width' : '70px', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_SWITCHES)], 
-        #                                           layout={'height' : '400px', 'width' : '72px', 'border' : 'none', 'margin' : 'none'}) for _ in range(N_CHANNELS)]
         self.actual_irradiances_table = widgets.HBox()
         self.actual_irradiances_table.add_class('actual_irradiances_table')
         self.actual_irradiances_table.children = [widgets.VBox(children=[widgets.Box(children=[widgets.HTML(value='0')], layout={'height' : f'calc({ACTUAL_IRRADIANCES_HEIGHT}/10)', 'width' : f'calc({ACTUAL_IRRADIANCES_WIDTH}-2px)/10)', 'border' : 'solid 1px black', 'margin' : 'none'}) for _ in range(N_SWITCHES)], 
@@ -572,49 +633,47 @@ class ArrayCurrentsPanel():
     def edit_required_currents_value(self, row, col, value):
         self.required_currents_table.children[col].children[row].children[0].value = str(value)
         
-    def edit_channal_currents_value(self, row, col, value):
-        self.channel_currents_table.children[col].children[row].children[0].value = str(value)
+    def edit_channel_currents_value(self, col, value):
+        self.channel_currents_table.children[col].children[0].value = str(value)
         
     def edit_actual_irradiances_value(self, row, col, value):
         self.actual_irradiances_table.children[col].children[row].children[0].value = str(value)
-        
-"""Class to load regressions and compute required currents/actuall irradiances.
-
-"""        
-class Regressions():
-    def __init__(self, peak_irr_select):
-        self.peak_irr_select = peak_irr_select
-        
-    def irradiance_to_current(self, matrix_output):
-        pass
-    
-    def current_to_irradiance(self):
-        pass
     
 """Main class for accessing dashboard panels for the HearLight system.
 
 """
 class Dashboard():
     def __init__(self):
+        ## logo panel
         self.logo_panel_inst = LogoPanel()
         self.logo_panel = self.logo_panel_inst.logo_panel
         
         self.select_leds = SelectLEDs(self)
         self.indicate_leds = IndicateLEDs()
         
+        ## main control panel
         self.main_control_panel_inst = MainControlPanel()
+        self.main_control_panel_inst.start_button.on_click(self.run_basic_control)
+        self.main_control_panel_inst.observe(self.get_coeffs_matrix_L_to_I, names=['irr_to_current_trait'])
+        self.main_control_panel_inst.observe(self.get_coeffs_matrix_I_to_L, names=['current_to_irr_trait'])        
+        self.main_control_panel_inst.observe(self.get_channel_currents, names=['led_max_current_trait', 'channel_max_current_trait', 'switch_max_current_trait', 'device_max_current_trait', 'dac_ref_trait'])
+        self.main_control_panel_inst.observe(self.led_control_config, names=['dac_ref_trait'])
+
         self.main_control_panel = self.main_control_panel_inst.main_control_panel
-        # TEMPORARILY COMMENTED
+
+        ## led control panel
         self.led_control_panel_inst = LEDControlPanel(self)
-        self.led_control_panel = self.led_control_panel_inst.led_control_panel
-        #self.regressions = Regressions(self.main_control_panel.peak_irr_select)
-        #self.main_control_panel.peak_irr_select.observe(functools.partial(self.regressions.irradiance_to_current, self.indicate_leds.matrix_output), ['value'])
+        self.led_control_panel_inst.observe(self.get_channel_currents, names=['peak_irr_trait'])
         
+        self.led_control_panel = self.led_control_panel_inst.led_control_panel
+
+        ## array currents panel
         self.array_currents_panel_inst = ArrayCurrentsPanel()
         self.required_currents_panel = self.array_currents_panel_inst.required_currents_panel
         self.channel_currents_panel = self.array_currents_panel_inst.channel_currents_panel
-        self.actual_irradiances_panel = self.array_currents_panel_inst.actual_irradiances_panel        
+        self.actual_irradiances_panel = self.array_currents_panel_inst.actual_irradiances_panel
         
+        ## parameters relating to state of system
         self.channel_states = np.array([False] * N_CHANNELS, ndmin=2)  # channel off is false
         self.switch_states = np.array([False] * N_SWITCHES, ndmin=2) # switches open is false
         
@@ -622,20 +681,189 @@ class Dashboard():
         
         self.channel_counts = np.array([0] * N_CHANNELS) # measured in DAC counts (0 -> 65535)
         
-        # TEMP ##
-        self.dac_ref = widgets.Dropdown(options=[3.125, 6.25, 12.5, 25, 50, 100], value=100, disabled=True, layout = {'width' : '100%'})
-    
-    def get_channel_currents(self):
+        self.coeffs_matrix_L_to_I = None
+        self.coeffs_matrix_I_to_L = None
+        
+        self.ol = None
+        self.system = None
+        
+    def get_switch_states(self):
+        """Gets array of required switch positions
+        Called when the pattern is updated
+        """
+        switch_states = np.array([False] * N_SWITCHES)
+        for select_led_col in np.transpose(np.array(self.select_leds.leds_clicked)):
+            switch_states = switch_states | select_led_col
+        self.switch_states[0] = switch_states
+        
+    def get_channel_states(self):
+        """Gets array of channels which will be active
+        Called when pattern is updated
+        """
         channel_states = np.array([False] * N_CHANNELS)
         for select_led_row in np.array(self.select_leds.leds_clicked):
             channel_states = channel_states | select_led_row
         self.channel_states[0] = channel_states
         
-        self.channel_counts = ((self.channel_currents / self.dac_ref.value * (2**16-1)) * self.channel_states[0].astype(int)).astype(int)
+    def get_coeffs_matrix_L_to_I(self, change):
+        """Called when the file select for regression coefficients is changed.
+        """
+        # irradiance to current...
+        # open file and read irradiance to current regression coefficients
+        data_str = self.main_control_panel_inst.irr_to_current_upload.data[0].decode("utf-8").split('\n')[0:-1]
+
+        # get regression coefficients as 2D numpy array
+        polynomial_order = len(data_str[0].split(',')) - 1
+        self.coeffs_matrix_L_to_I = np.reshape(np.asarray([d.split(',') for d in data_str]).astype(float), (10,10,polynomial_order+1))
+        
+        self.get_channel_currents(0)
+        
+    def get_coeffs_matrix_I_to_L(self, change):
+        """Called when the file select for regression coefficients is changed.
+        """
+        # current to irradiance...
+        data_str = self.main_control_panel_inst.current_to_irr_upload.data[0].decode("utf-8").split('\n')[0:-1]
+
+        polynomial_order = len(data_str[0].split(',')) - 1
+        self.coeffs_matrix_I_to_L = np.reshape(np.asarray([d.split(',') for d in data_str]).astype(float), (10,10,polynomial_order+1))
+        
+        self.get_channel_currents(0)
+        
+    def get_channel_currents(self, trait):
+        """Gets the channel currents for chosen LED pattern, peak irradiance and coefficients
+        Called when the pattern, peak irradiance or any setting from 'main control panel' gets updated including file opens
+        """     
+        peak_irr = self.led_control_panel_inst.peak_irr_trait
+        led_max_current = self.main_control_panel_inst.led_max_current_trait
+        channel_max_current = self.main_control_panel_inst.channel_max_current_trait
+        switch_max_current = self.main_control_panel_inst.switch_max_current_trait
+        device_max_current = self.main_control_panel_inst.device_max_current_trait
+        dac_ref = self.main_control_panel_inst.dac_ref_trait
+        
+        if (self.coeffs_matrix_L_to_I is None) or (self.coeffs_matrix_I_to_L is None):
+            self.main_control_panel_inst.update_log('ERROR: Load coefficients!\n')
+            return
+        
+        error_log_text = f""
+        
+        if peak_irr == 0 or np.array_equal(self.indicate_leds.matrix_output, np.zeros(shape=(N_SWITCHES, N_CHANNELS))):
+            required_currents = np.zeros(shape=(N_SWITCHES, N_CHANNELS), dtype=float)
+            channel_currents = np.zeros(shape=(1,N_CHANNELS), dtype=float)
+            actual_led_irradiances = np.zeros(shape=(N_SWITCHES, N_CHANNELS), dtype=float)
+            
+        else:
+            # get matrix of required currents
+            irr_matrix = np.array([[peak_irr] * N_CHANNELS for _ in range(N_SWITCHES)])
+            required_currents = np.asarray([[np.poly1d(coeffs)(peak_irr) for coeffs in self.coeffs_matrix_L_to_I[r]] for r in range(N_SWITCHES)]) * self.indicate_leds.matrix_output
+
+            # check for any erraneous negative currents caused by fitting regression on a bad LED - set to zero
+            required_currents[required_currents < 0] = 0
+            
+            # check if individual LED maximum current is being exceeded and set to maximum if so
+            required_currents[required_currents > led_max_current] = led_max_current
+            
+            # warn user if required current is zero for an LED that should be on (i.e. a short on the same column)
+            for channel, channel_idx in zip(np.transpose(required_currents), range(10)):
+                if any(self.switch_states[0] & np.array(channel == 0)) and any(channel > 0):
+                    # !!! this line is dangerous - allows current to flow through parallel short - may overheat/damage device or damage switch array ICs
+                    # channel[self.switch_states[0] & np.array(channel == 0)] = np.amin(channel[channel > 0])
+                    error_log_text += f"WARNING: channel P{10 - channel_idx} current set to zero to avoid passing current through a short\n"                    
+
+            n_switches_closed = self.switch_states[0].sum()
+
+            # get required channel currents from matrix of required currents unless required currents all zero
+            channel_currents = np.zeros(shape=(1,N_CHANNELS), dtype=float)
+            if not np.array_equal(required_currents, np.zeros(shape=(N_SWITCHES, N_CHANNELS))):
+                channel_currents[0][self.channel_states[0]] = np.amin(required_currents[self.switch_states[0],:][:,self.channel_states[0]], axis=0) * n_switches_closed
+                
+            # check if channel current exceeded for any channel
+            if any(channel_currents[0] > channel_max_current):
+                error_log_text += f"WARNING: channel current limit reached on {str(np.array(['P'+str(r) for r in range(1,11,1)])[channel_currents[0][::-1] > channel_max_current])[1:-1]}\n- currents have been automatically adjusted to maximum available\n"
+                channel_currents[0][channel_currents[0] > channel_max_current] = channel_max_current            
+
+            # check if any switch current exceeded
+            requested_switch_current = np.sum(channel_currents[0]) / n_switches_closed
+            if requested_switch_current > switch_max_current:
+                channel_currents[0] = channel_currents[0] / requested_switch_current * switch_max_current
+                error_log_text += f"WARNING: switch current limit reached on {str(np.array(['N'+str(r) for r in range(1,11,1)])[self.switch_states[0][::-1]])[1:-1]}\n- currents have been automatically adjusted to maximum\n"
+
+            # check if maximum device current exceeded
+            requested_device_current = np.sum(channel_currents[0])
+            if requested_device_current > device_max_current:
+                channel_currents[0] = channel_currents[0] / requested_device_current * device_max_current
+                error_log_text += f"WARNING: device current limit reached\n- currents have been automatically adjusted to maximum available"
+            
+            actual_led_irradiances = np.asarray([[np.poly1d(self.coeffs_matrix_I_to_L[r][c])(channel_currents[0][c]/n_switches_closed) for c in range(N_CHANNELS)] for r in range(N_SWITCHES)]) * self.indicate_leds.matrix_output
+            
+        # update error log
+        self.main_control_panel_inst.update_log(error_log_text)
+            
+        # update information tables
+        for col in range(N_CHANNELS):
+            self.array_currents_panel_inst.edit_channel_currents_value(col, channel_currents[0][col])
+            for row in range(N_SWITCHES):
+                self.array_currents_panel_inst.edit_required_currents_value(row, col, required_currents[row][col])
+                self.array_currents_panel_inst.edit_actual_irradiances_value(row, col, actual_led_irradiances[row][col])
+            
+        self.required_currents = required_currents
+        self.channel_currents = channel_currents
+        self.channel_counts = ((self.channel_currents / dac_ref * (2**16-1)) * self.channel_states[0].astype(int)).astype(int)
+        
+    def led_control_config(self, change):
+        """Call when overlay is loaded or dac ref is changed
+        """
+        self.ol = self.main_control_panel_inst.ol
+        if self.ol == None:
+            self.main_control_panel_inst.update_log('ERROR: Program overlay!\n')
+            return
+        
+        self.system = ControlLEDs(self.ol)
+        
+        # ALL SWITCHES OPEN
+        for i in range(10):
+            self.system.switch_control(i, 0)
     
-    def get_switch_states(self):
-        switch_states = np.array([False] * N_SWITCHES)
-        for select_led_col in np.transpose(np.array(self.select_leds.leds_clicked)):
-            switch_states = switch_states | select_led_col
-        self.switch_states[0] = switch_states
+        # SWITCH OFF ALL DAC CHANNELS
+        for i in range(10):
+            self.system.dac_channel_control(i, 0, 0)
+            
+        dac_ref = self.main_control_panel_inst.dac_ref_commands[str(self.main_control_panel_inst.dac_ref_trait)]
+            
+        # SET SOFTSPAN RANGE FOR ALL DACS
+        for i in range(10):
+            self.system.dac_config(i, dac_ref)
+                
+    def run_basic_control(self, btn):
+        """When user presses 'start' button for basic control (selecting LEDs manually)
+        """
+        if self.system == None:
+            self.led_control_config(0)
+        
+        pulse_duration_secs = self.led_control_panel_inst.pulse_duration_select.value / 1000
+        pulse_time_secs = 1 / self.led_control_panel_inst.pulse_frequency_select.value
+        no_pulses = self.led_control_panel_inst.no_pulses_select.value
+        
+        for pulse in range(no_pulses):
+            if self.main_control_panel_inst.stop_pressed:
+                break
+            
+            # LEDs on ############
+            for sw in range(10):
+                self.system.switch_control(sw, self.switch_states[0][sw])
+            for ch in range(10):
+                self.system.dac_channel_control(9-ch, 1, int(self.channel_counts[0][ch]))
+            self.led_control_panel_inst.trigger_signal_box.add_class('trigger_signal_box_on')
+            sleep(pulse_duration_secs)
+            
+            # LEDs off ############
+            for ch in range(10):
+                self.system.dac_channel_control(ch, 0, 0)
+            for sw in range(10):
+                self.system.switch_control(sw, 0)
+            self.led_control_panel_inst.trigger_signal_box.remove_class('trigger_signal_box_on')
+            sleep(max(0, pulse_time_secs - pulse_duration_secs))
+        
+    def run_protocol(self, btn):
+        """When user presses 'start' button for protocol control (from file)
+        """
         

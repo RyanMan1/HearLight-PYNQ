@@ -9,7 +9,7 @@ LTC2662_CMD_WRITE_N_UPDATE_N = 0x30
 """
 class ControlLEDs():
     def __init__(self, ol):
-        lib = MicroblazeLibrary(ol.ARDUINO, ['spi', 'gpio'])
+        lib = MicroblazeLibrary(ol.iop_arduino, ['spi', 'gpio'])
         
         # enable external power supply with en pin connected to A6
         power_supply_en = lib.gpio_open(19)
