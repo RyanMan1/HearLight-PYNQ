@@ -4,12 +4,14 @@ import functools
 import asyncio
 import traitlets
 from time import sleep
+import os
 
 from .audio import AudioControlPanel
 from .css import css, REQUIRED_CURRENTS_HEIGHT, REQUIRED_CURRENTS_WIDTH, CHANNEL_CURRENTS_HEIGHT, CHANNEL_CURRENTS_WIDTH, ACTUAL_IRRADIANCES_HEIGHT, ACTUAL_IRRADIANCES_WIDTH
 
 from pynq import Overlay
 from .driver import ControlLEDs
+import hearlight
 
 import copy
 
@@ -19,35 +21,32 @@ N_CHANNELS = 10
 OVERLAYS = {'Base overlay' : 'base.bit',
             'Ryan overlay 1' : './overlays/test.bit'}
 
-"""Class for logo panel
+"""Class for banner panel
 
 """
-class LogoPanel():
+class BannerPanel():
     def __init__(self):
-        self.logo_panel = widgets.VBox()
-        self.logo_panel.add_class('logo_panel_css')
+        self.banner_image_box = widgets.Box()
+        lib_path = os.path.dirname(hearlight.__file__)
+        image_path = os.path.join(lib_path, 'images/banner.png')
+        banner_image = widgets.Image(value=open(image_path, 'rb').read())
+        banner_image.add_class('banner_image_css')
+        self.banner_image_box.children += (banner_image,)
+        self.banner_image_box.add_class('banner_image_box_css')
 
-        logo_image_box = widgets.Box()
-        logo_image = widgets.Image(value=open('logo.png', 'rb').read())
-        logo_image.add_class('logo_image_css')
-        logo_image_box.children += (logo_image,)
-        logo_image_box.add_class('logo_image_box_css')
+"""Class for info panel
 
-
-        text_box = widgets.VBox()
-        text_box.add_class('text_box_css')
-        text_title = widgets.HTML(value='<br><b>HearLight FPGA Control System</b>')
-        text_title.add_class('text_css')
-        text_version = widgets.HTML(value='<i>version 1.0, March 2022</i>')
-        text_version.add_class('text_css')
-        text_author = widgets.HTML(value='<i>University of Strathclyde</i>')
-        text_author.add_class('text_css')
-        text_box.children += (text_title,
-                              text_version,
-                              text_author,)
-
-        self.logo_panel.children += (logo_image_box,
-                                     text_box,)
+"""
+class InfoPanel():
+    def __init__(self):
+        self.info_panel = widgets.VBox()
+        self.info_panel.add_class('info_panel_css')
+        text_title = widgets.HTML(value='<h1 style="font-size:1.7em"><b>HearLight PYNQ control system</b></h1>')
+        text_title.add_class('text_coloured_css')
+        text_version_author = widgets.HTML(value='<h2 style="font-size:1em"><i>Version 1.0, December 2022<br><br>Ryan Greer<br>University of Strathclyde</i></h2>')
+        text_version_author.add_class('text_css')
+        self.info_panel.children += (text_title,
+                              text_version_author,)
 
 """Class for the main control/setup panel.
 
@@ -105,32 +104,28 @@ class MainControlPanel(traitlets.HasTraits):
         traitlets.dlink((self.adv_toggle_button, 'value'), (self.device_max_current_select, 'disabled'), adv_setting_transform)
         
         # dropdown for DAC reference current
-        self.dac_ref = widgets.Dropdown(options=[3.125, 6.25, 12.5, 25, 50, 100, 200, 300], value=300, disabled=True, layout = {'width' : '100%'})
+        self.dac_ref = widgets.Dropdown(options=[3.125, 6.25, 12.5, 25, 50, 100, 200, 300], value=6.25, disabled=True, layout = {'width' : '100%'})
         self.dac_ref.add_class('dac_ref')
         self.dac_ref_commands = {'3.125' : 0, '6.25' : 1, '12.5' : 2, '25.0' : 3, '50.0' : 4, '100.0' : 5, '200.0' : 6, '300.0' : 7}
         traitlets.link((self.dac_ref, 'value'), (self, 'dac_ref_trait'))
         traitlets.dlink((self.adv_toggle_button, 'value'), (self.dac_ref, 'disabled'), adv_setting_transform)
         
         # file uploads for irradiance to current regression coefficients
-        self.irr_to_current_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False)
+        self.irr_to_current_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False, layout = {'width' : '130px'})
         traitlets.link((self.irr_to_current_upload, 'value'), (self, 'irr_to_current_trait'))
-        self.irr_to_current_upload_path = widgets.HTML(value='<i style="color:blue;">No file selected!</i>')
+        self.irr_to_current_upload_path = widgets.HTML(value='<i style="color:red;">No file selected!</i>')
         
         # file upload for current to irradiance regression coefficients 
-        self.current_to_irr_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False)
+        self.current_to_irr_upload = widgets.FileUpload(accept='.dat', multiple=False, disabled=False, layout = {'width' : '130px'})
         traitlets.link((self.current_to_irr_upload, 'value'), (self, 'current_to_irr_trait'))
-        self.current_to_irr_upload_path = widgets.HTML(value='<i style="color:blue;">No file selected!</i>')
+        self.current_to_irr_upload_path = widgets.HTML(value='<i style="color:red;">No file selected!</i>')
         
         # text box for error log
         self.log = widgets.Textarea(value='', disabled=False)
         self.log.add_class('log')
         
-        # button to start protocol
-        self.start_button = widgets.Button(description='START', icon='play')
-        self.start_button.add_class('start_button')
-        
         # button to stop program running
-        self.stop_button = widgets.Button(description='STOP', icon='stop')
+        self.stop_button = widgets.Button(description='STOP', icon='stop', disabled=True)
         self.stop_button.add_class('stop_button')
         self.stop_pressed = False
                 
@@ -270,8 +265,7 @@ class MainControlPanel(traitlets.HasTraits):
         # interact start/stop button box
         interact_start_stop_box = widgets.Box()
         interact_start_stop_box.add_class('interact_start_stop_box')
-        interact_start_stop_box.children += (self.start_button,
-                                             self.stop_button, )
+        interact_start_stop_box.children += (self.stop_button, )
         interact_box.children += (interact_start_stop_box,)
 
 """Class for the LEDs selector.
@@ -299,7 +293,7 @@ class SelectLEDs():
             max=100,
             description='Loading:',
             bar_style='info', # 'success', 'info', 'warning', 'danger' or ''
-            style={'bar_color': 'maroon'},
+            style={'bar_color': '#635faa'},
             orientation='horizontal'
         )
         self.led_grid.add_class('led_grid_loading')
@@ -393,7 +387,7 @@ class IndicateLEDs():
             max=100,
             description='Loading:',
             bar_style='info', # 'success', 'info', 'warning', 'danger' or ''
-            style={'bar_color': 'maroon'},
+            style={'bar_color': '#635faa'},
             orientation='horizontal'
         )
         self.led_grid.add_class('led_grid_loading')
@@ -406,9 +400,7 @@ class IndicateLEDs():
         led_grid_temp.add_class('led_grid')
                 
         for row in range(N_SWITCHES):
-            for col in range(N_CHANNELS):
-                #print('test')
-                
+            for col in range(N_CHANNELS):                
                 led_indicator = widgets.Box()
                 led_indicator.add_class('led_indicator')
                 setattr(led_indicator, 'led_row_idx', row)
@@ -421,7 +413,6 @@ class IndicateLEDs():
                 led_grid_temp.children += (led_box,)
                 
                 self.loading.value += 1
-                #await asyncio.sleep(0.01)
             await asyncio.sleep(1)
         
         self.led_grid.remove_class('led_grid_loading')
@@ -437,10 +428,6 @@ class IndicateLEDs():
     def update_led_indicator(self, channel_states, switch_states):
         self.matrix_output = np.matmul(np.transpose(switch_states), channel_states)
         
-        # MAKE THIS MORE EFFICIENT???
-        #
-        #
-        #
         for row in range(N_SWITCHES):
             if switch_states[0][row] == False:
                 for c in range(N_CHANNELS):
@@ -493,10 +480,14 @@ class LEDControlPanel(traitlets.HasTraits):
         # int text for number of pulses
         self.no_pulses_select = widgets.IntText(min=0, value=3)
         self.no_pulses_select.add_class('no_pulses_select')
+        
+        # button to start protocol
+        self.start_button = widgets.Button(description='START', icon='play')
+        self.start_button.add_class('start_button')
        
         # file upload for complex pattern configuration file
         self.complex_pattern_file_upload = widgets.FileUpload(accept='.txt', multiple=False)
-        self.complex_pattern_file_upload_path = widgets.HTML(value='<i style="color:blue;">No file selected!</i>')
+        self.complex_pattern_file_upload_path = widgets.HTML(value='<i style="color:#229abc;">No file selected!</i>')
         
         # text entry to display and allow editing of complex pattern
         self.complex_pattern_text = widgets.Textarea()
@@ -580,6 +571,8 @@ class LEDControlPanel(traitlets.HasTraits):
         no_pulses_select_box.children += (widgets.Label('Number of pulses: '), self.no_pulses_select, )
         simple_config_box.children += (no_pulses_select_box, )
         
+        simple_config_box.children += (self.start_button, )
+        
         complex_config_box = widgets.Box()
         complex_config_box.add_class('complex_config_box')
         
@@ -631,62 +624,93 @@ class ArrayCurrentsPanel():
         self.actual_irradiances_panel = widgets.VBox(children=[self.actual_irradiances_label, self.actual_irradiances_table])
         
     def edit_required_currents_value(self, row, col, value):
-        self.required_currents_table.children[col].children[row].children[0].value = str(value)
+        self.required_currents_table.children[col].children[row].children[0].value = '{:.3f}'.format(value)
         
     def edit_channel_currents_value(self, col, value):
-        self.channel_currents_table.children[col].children[0].value = str(value)
+        self.channel_currents_table.children[col].children[0].value = '{:.3f}'.format(value)
         
     def edit_actual_irradiances_value(self, row, col, value):
-        self.actual_irradiances_table.children[col].children[row].children[0].value = str(value)
+        self.actual_irradiances_table.children[col].children[row].children[0].value = '{:.3f}'.format(value)
     
 """Main class for accessing dashboard panels for the HearLight system.
 
 """
 class Dashboard():
-    def __init__(self):
-        ## logo panel
-        self.logo_panel_inst = LogoPanel()
-        self.logo_panel = self.logo_panel_inst.logo_panel
+    def __init__(self, led_control_panel = False, array_currents_panel = False, audio_control_panel = None):
+        self.led_control_panel_active = led_control_panel
+        self.array_currents_panel_active = array_currents_panel
         
-        self.select_leds = SelectLEDs(self)
-        self.indicate_leds = IndicateLEDs()
+        ## banner panel
+        self.banner_panel_inst = BannerPanel()
+        self.banner_panel = self.banner_panel_inst.banner_image_box
+        
+        ## info panel
+        self.info_panel_inst = InfoPanel()
+        self.info_panel = self.info_panel_inst.info_panel
         
         ## main control panel
         self.main_control_panel_inst = MainControlPanel()
-        self.main_control_panel_inst.start_button.on_click(self.run_basic_control)
         self.main_control_panel_inst.observe(self.get_coeffs_matrix_L_to_I, names=['irr_to_current_trait'])
-        self.main_control_panel_inst.observe(self.get_coeffs_matrix_I_to_L, names=['current_to_irr_trait'])        
-        self.main_control_panel_inst.observe(self.get_channel_currents, names=['led_max_current_trait', 'channel_max_current_trait', 'switch_max_current_trait', 'device_max_current_trait', 'dac_ref_trait'])
-        self.main_control_panel_inst.observe(self.led_control_config, names=['dac_ref_trait'])
+        self.main_control_panel_inst.observe(self.get_coeffs_matrix_I_to_L, names=['current_to_irr_trait'])
+        if(self.led_control_panel_active):
+            self.main_control_panel_inst.observe(self.get_channel_currents, names=['led_max_current_trait', 'channel_max_current_trait', 'switch_max_current_trait', 'device_max_current_trait', 'dac_ref_trait'])
+            self.main_control_panel_inst.observe(self.led_control_config, names=['dac_ref_trait'])
 
         self.main_control_panel = self.main_control_panel_inst.main_control_panel
 
         ## led control panel
-        self.led_control_panel_inst = LEDControlPanel(self)
-        self.led_control_panel_inst.observe(self.get_channel_currents, names=['peak_irr_trait'])
+        if(self.led_control_panel_active):
+            self.select_leds = SelectLEDs(self)
+            self.indicate_leds = IndicateLEDs()
+            self.led_control_panel_inst = LEDControlPanel(self)
+            self.led_control_panel_inst.observe(self.get_channel_currents, names=['peak_irr_trait'])
         
-        self.led_control_panel = self.led_control_panel_inst.led_control_panel
+            self.led_control_panel = self.led_control_panel_inst.led_control_panel
+            
+            self.led_control_panel_inst.start_button.on_click(self.run_basic_control)
 
         ## array currents panel
-        self.array_currents_panel_inst = ArrayCurrentsPanel()
-        self.required_currents_panel = self.array_currents_panel_inst.required_currents_panel
-        self.channel_currents_panel = self.array_currents_panel_inst.channel_currents_panel
-        self.actual_irradiances_panel = self.array_currents_panel_inst.actual_irradiances_panel
+        if(self.array_currents_panel_active):
+            self.array_currents_panel_inst = ArrayCurrentsPanel()
+            self.required_currents_panel = self.array_currents_panel_inst.required_currents_panel
+            self.channel_currents_panel = self.array_currents_panel_inst.channel_currents_panel
+            self.actual_irradiances_panel = self.array_currents_panel_inst.actual_irradiances_panel
         
-        ## parameters relating to state of system
-        self.channel_states = np.array([False] * N_CHANNELS, ndmin=2)  # channel off is false
-        self.switch_states = np.array([False] * N_SWITCHES, ndmin=2) # switches open is false
-        
-        self.channel_currents = np.array([0] * N_CHANNELS) # measured in mA
-        
-        self.channel_counts = np.array([0] * N_CHANNELS) # measured in DAC counts (0 -> 65535)
-        
+        ## parameters relating to state of system - only valid when LED control panel is being used
+        if(self.led_control_panel_active):
+            self.channel_states = np.array([False] * N_CHANNELS, ndmin=2)  # channel off is false
+            self.switch_states = np.array([False] * N_SWITCHES, ndmin=2) # switches open is false
+
+            self.channel_currents = np.array([0] * N_CHANNELS) # measured in mA
+
+            self.channel_counts = np.array([0] * N_CHANNELS) # measured in DAC counts (0 -> 65535)
+
         self.coeffs_matrix_L_to_I = None
         self.coeffs_matrix_I_to_L = None
+
+        self.basic_driver = None
         
         self.ol = None
-        self.system = None
         
+        ## audio control panel
+        if audio_control_panel != None:
+            self.audio_control_panel_inst = AudioControlPanel(audio_control_panel)
+            self.audio_control_panel = self.audio_control_panel_inst.audio_control_panel
+            
+            # link traits in 'audio processor' class (e.g. AudioSoftwareProcessorFFT - 'audio_control_panel' parameter to class init) to traits in main control panel
+            traitlets.link((self.main_control_panel_inst, 'led_max_current_trait'), (self.audio_control_panel_inst.processor, 'led_max_current_trait'))
+            traitlets.link((self.main_control_panel_inst, 'channel_max_current_trait'), (self.audio_control_panel_inst.processor, 'channel_max_current_trait'))
+            traitlets.link((self.main_control_panel_inst, 'switch_max_current_trait'), (self.audio_control_panel_inst.processor, 'switch_max_current_trait'))
+            traitlets.link((self.main_control_panel_inst, 'device_max_current_trait'), (self.audio_control_panel_inst.processor, 'device_max_current_trait'))
+            traitlets.link((self.main_control_panel_inst, 'dac_ref_trait'), (self.audio_control_panel_inst.processor, 'dac_ref_trait'))
+            traitlets.link((self.main_control_panel_inst, 'irr_to_current_trait'), (self.audio_control_panel_inst.processor, 'irr_to_current_trait'))
+            traitlets.link((self.main_control_panel_inst, 'current_to_irr_trait'), (self.audio_control_panel_inst.processor, 'current_to_irr_trait'))
+            
+            self.audio_control_panel_inst.processor.update_main_control_panel_log = self.main_control_panel_inst.update_log
+            
+            # the audio processing takes priority so cannot program overlay for basic LED control
+            self.main_control_panel_inst.program_overlay_button.disabled = True
+            
     def get_switch_states(self):
         """Gets array of required switch positions
         Called when the pattern is updated
@@ -715,6 +739,8 @@ class Dashboard():
         # get regression coefficients as 2D numpy array
         polynomial_order = len(data_str[0].split(',')) - 1
         self.coeffs_matrix_L_to_I = np.reshape(np.asarray([d.split(',') for d in data_str]).astype(float), (10,10,polynomial_order+1))
+
+        self.main_control_panel_inst.irr_to_current_upload_path.value = f"<i style='color:green;'>{self.main_control_panel_inst.irr_to_current_upload.metadata[0]['name']}</i>"
         
         self.get_channel_currents(0)
         
@@ -726,6 +752,8 @@ class Dashboard():
 
         polynomial_order = len(data_str[0].split(',')) - 1
         self.coeffs_matrix_I_to_L = np.reshape(np.asarray([d.split(',') for d in data_str]).astype(float), (10,10,polynomial_order+1))
+
+        self.main_control_panel_inst.current_to_irr_upload_path.value = f"<i style='color:green;'>{self.main_control_panel_inst.current_to_irr_upload.metadata[0]['name']}</i>"
         
         self.get_channel_currents(0)
         
@@ -765,9 +793,9 @@ class Dashboard():
             # warn user if required current is zero for an LED that should be on (i.e. a short on the same column)
             for channel, channel_idx in zip(np.transpose(required_currents), range(10)):
                 if any(self.switch_states[0] & np.array(channel == 0)) and any(channel > 0):
-                    # !!! this line is dangerous - allows current to flow through parallel short - may overheat/damage device or damage switch array ICs
+                    # !!! this line is potentially dangerous - allows current to flow through parallel short - may overheat/damage device or damage switch array ICs
                     # channel[self.switch_states[0] & np.array(channel == 0)] = np.amin(channel[channel > 0])
-                    error_log_text += f"WARNING: channel P{10 - channel_idx} current set to zero to avoid passing current through a short\n"                    
+                    error_log_text += f"WARNING: channel P{10 - channel_idx} current set to zero to avoid passing current through a short\n"
 
             n_switches_closed = self.switch_states[0].sum()
 
@@ -792,6 +820,11 @@ class Dashboard():
             if requested_device_current > device_max_current:
                 channel_currents[0] = channel_currents[0] / requested_device_current * device_max_current
                 error_log_text += f"WARNING: device current limit reached\n- currents have been automatically adjusted to maximum available"
+
+            # check if DAC ref exceeded
+            if any(channel_currents[0] > dac_ref):
+                channel_currents[channel_currents > dac_ref] = dac_ref
+                error_log_text += f"WARNING: DAC current reference limit reached\n- currents have been automatically adjusted to maximum\n"
             
             actual_led_irradiances = np.asarray([[np.poly1d(self.coeffs_matrix_I_to_L[r][c])(channel_currents[0][c]/n_switches_closed) for c in range(N_CHANNELS)] for r in range(N_SWITCHES)]) * self.indicate_leds.matrix_output
             
@@ -799,11 +832,12 @@ class Dashboard():
         self.main_control_panel_inst.update_log(error_log_text)
             
         # update information tables
-        for col in range(N_CHANNELS):
-            self.array_currents_panel_inst.edit_channel_currents_value(col, channel_currents[0][col])
-            for row in range(N_SWITCHES):
-                self.array_currents_panel_inst.edit_required_currents_value(row, col, required_currents[row][col])
-                self.array_currents_panel_inst.edit_actual_irradiances_value(row, col, actual_led_irradiances[row][col])
+        if(self.array_currents_panel_active):
+            for col in range(N_CHANNELS):
+                self.array_currents_panel_inst.edit_channel_currents_value(col, channel_currents[0][col])
+                for row in range(N_SWITCHES):
+                    self.array_currents_panel_inst.edit_required_currents_value(row, col, required_currents[row][col])
+                    self.array_currents_panel_inst.edit_actual_irradiances_value(row, col, actual_led_irradiances[row][col])
             
         self.required_currents = required_currents
         self.channel_currents = channel_currents
@@ -817,26 +851,26 @@ class Dashboard():
             self.main_control_panel_inst.update_log('ERROR: Program overlay!\n')
             return
         
-        self.system = ControlLEDs(self.ol)
+        self.basic_driver = ControlLEDs(self.ol)
         
         # ALL SWITCHES OPEN
         for i in range(10):
-            self.system.switch_control(i, 0)
+            self.basic_driver.switch_control(i, 0)
     
         # SWITCH OFF ALL DAC CHANNELS
         for i in range(10):
-            self.system.dac_channel_control(i, 0, 0)
+            self.basic_driver.dac_channel_control(i, 0, 0)
             
         dac_ref = self.main_control_panel_inst.dac_ref_commands[str(self.main_control_panel_inst.dac_ref_trait)]
             
         # SET SOFTSPAN RANGE FOR ALL DACS
         for i in range(10):
-            self.system.dac_config(i, dac_ref)
+            self.basic_driver.dac_config(i, dac_ref)
                 
     def run_basic_control(self, btn):
         """When user presses 'start' button for basic control (selecting LEDs manually)
         """
-        if self.system == None:
+        if self.basic_driver == None:
             self.led_control_config(0)
         
         pulse_duration_secs = self.led_control_panel_inst.pulse_duration_select.value / 1000
@@ -849,21 +883,22 @@ class Dashboard():
             
             # LEDs on ############
             for sw in range(10):
-                self.system.switch_control(sw, self.switch_states[0][sw])
+                self.basic_driver.switch_control(sw, self.switch_states[0][sw])
             for ch in range(10):
-                self.system.dac_channel_control(9-ch, 1, int(self.channel_counts[0][ch]))
+                self.basic_driver.dac_channel_control(9-ch, 1, int(self.channel_counts[0][ch]))
             self.led_control_panel_inst.trigger_signal_box.add_class('trigger_signal_box_on')
             sleep(pulse_duration_secs)
             
             # LEDs off ############
             for ch in range(10):
-                self.system.dac_channel_control(ch, 0, 0)
+                self.basic_driver.dac_channel_control(ch, 0, 0)
             for sw in range(10):
-                self.system.switch_control(sw, 0)
+                self.basic_driver.switch_control(sw, 0)
             self.led_control_panel_inst.trigger_signal_box.remove_class('trigger_signal_box_on')
             sleep(max(0, pulse_time_secs - pulse_duration_secs))
         
     def run_protocol(self, btn):
         """When user presses 'start' button for protocol control (from file)
         """
+        pass
         
