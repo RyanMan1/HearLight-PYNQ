@@ -40,6 +40,9 @@ ACTUAL_IRRADIANCES_WIDTH = '100%'
 AUDIO_CONTROL_PANEL_HEIGHT = '100%'
 AUDIO_CONTROL_PANEL_WIDTH = '100%'
 
+TONOTOPIC_MAP_IMAGES_PANEL_HEIGHT = '100%'
+TONOTOPIC_MAP_IMAGES_PANEL_WIDTH = '100%'
+
 #ACCENT_COLOUR = '#635faa' # purple
 ACCENT_COLOUR = '#229abc' # blue
 BACKGROUND_COLOUR = '#212121'
@@ -469,6 +472,7 @@ css_audio_control_panel = f"""
         flex-flow : row nowrap;
         height : {AUDIO_CONTROL_PANEL_HEIGHT};
         width : {AUDIO_CONTROL_PANEL_WIDTH};
+        background-color : {BACKGROUND_COLOUR};
     }}
     
     .audio_setup_box{{
@@ -476,9 +480,9 @@ css_audio_control_panel = f"""
         flex-flow : column nowrap;
         height : 100%;
         width : 40%;
-        border-top : solid 2px {ACCENT_COLOUR};
-        border-left : solid 2px {ACCENT_COLOUR};
-        border-bottom : solid 2px {ACCENT_COLOUR};
+        #border-top : solid 2px {ACCENT_COLOUR};
+        #border-left : solid 2px {ACCENT_COLOUR};
+        #border-bottom : solid 2px {ACCENT_COLOUR};
         border-right : solid 2px {ACCENT_COLOUR};
     }}
     
@@ -525,14 +529,31 @@ css_audio_control_panel = f"""
         flex-flow : column nowrap;
         height : 100%;
         width : 60%;
-        border-top : solid 2px {ACCENT_COLOUR};
-        border-bottom : solid 2px {ACCENT_COLOUR};
-        border-right : solid 2px {ACCENT_COLOUR};
+        #border-top : solid 2px {ACCENT_COLOUR};
+        #border-bottom : solid 2px {ACCENT_COLOUR};
+        #border-right : solid 2px {ACCENT_COLOUR};
     }}
     
     .plot_box{{
         height : 100%;
         width : 100%;
+    }}
+    
+    .t_map_panel_css{{
+        height : {TONOTOPIC_MAP_IMAGES_PANEL_HEIGHT};
+        width : {TONOTOPIC_MAP_IMAGES_PANEL_WIDTH};
+        #background-color : {BACKGROUND_COLOUR};
+    }}
+    
+    .t_map_image_box_css{{
+        height : 100%;
+        width : 100%;
+        overflow : hidden;
+    }}
+    
+    .t_map_image_css{{
+        border : none;
+        overflow : hidden;
     }}
     
 </style>

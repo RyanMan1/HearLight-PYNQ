@@ -101,7 +101,7 @@ class AudioControlPanel(traitlets.HasTraits):
         # place all setup parameters boxes into a tuple
         fs_entry_box = widgets.Box()
         fs_entry_box.add_class('label_setting_box')
-        fs_entry_box.children += (widgets.HTML(value=f"<font color='black'>Audio sample frequency (Hz): "), self.fs_entry, )
+        fs_entry_box.children += (widgets.HTML(value=f"<font color='#229abc'>Audio sample frequency (Hz): "), self.fs_entry, )
         audio_setup_parameters = ()
         audio_setup_parameters += (fs_entry_box, )
         
@@ -109,7 +109,7 @@ class AudioControlPanel(traitlets.HasTraits):
         for label, widget in self.processor_settings.items():
             box = widgets.Box()
             box.add_class('label_setting_box')
-            box.children += (widgets.HTML(value=f"<font color='blue'>{label}"), widget, )
+            box.children += (widgets.HTML(value=f"<font color='#635faa'>{label}"), widget, )
             audio_setup_parameters += (box, )
 
         audio_setup_parameters_box.children += audio_setup_parameters
@@ -167,9 +167,15 @@ class AudioControlPanel(traitlets.HasTraits):
         self.fig.data[0].update({'x' : np.arange(0, self.n_samples_plot_trait, 1)})
         self.fig.data[0].update({'y' : plot_data})
         
-        self.fig.update_layout(xaxis = {'title' : 'sample index'})
-        self.fig.update_layout(yaxis = {'title' : 'amplitude'})
+        self.fig.update_layout(xaxis = {'title' : 'sample index', 'gridcolor' : '#444444'})
+        self.fig.update_layout(yaxis = {'title' : 'amplitude', 'gridcolor' : '#444444'})
         self.fig.update_layout(title = {'text' : 'Audio signal in time domain'})
+        self.fig.update_layout(title_font_color='#FFFFFF')
+        self.fig.update_xaxes(color='#FFFFFF')
+        self.fig.update_yaxes(color='#FFFFFF')
+        self.fig.update_layout(paper_bgcolor='#212121')
+        self.fig.update_layout(plot_bgcolor='#212121')
+        self.fig.data[0].line.color = "#635faa"
 
         # MAKE THIS MORE DETERMINISTIC....
         self.fig.update_yaxes(
